@@ -18,7 +18,7 @@
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/cma.h>
-#include <linux/dma-contiguous.h>
+#include "dma-contiguous.h"
 #include <linux/io.h>
 #include <linux/of_reserved_mem.h>
 #include "ion.h"
@@ -152,7 +152,7 @@ static int rmem_ion_device_init(struct reserved_mem *rmem, struct device *dev)
 	struct ion_platform_heap *heap = pdev->dev.platform_data;
 
 	heap->base = rmem->base;
-	heap->base = rmem->size;
+	heap->size = rmem->size;
 	pr_debug("%s: heap %s base %pa size %pa dev %p\n", __func__,
 		 heap->name, &rmem->base, &rmem->size, dev);
 	return 0;

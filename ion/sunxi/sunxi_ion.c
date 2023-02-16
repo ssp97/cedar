@@ -39,6 +39,8 @@ static struct ion_of_heap sunxi_heaps[] = {
 		      "sys_user"),
 	PLATFORM_HEAP("allwinner,sys_contig", 1, ION_HEAP_TYPE_SYSTEM_CONTIG,
 		      "sys_contig"),
+	PLATFORM_HEAP("allwinner,carveout", ION_HEAP_TYPE_CARVEOUT, ION_HEAP_TYPE_CARVEOUT, 
+		      "carveout"),
 	PLATFORM_HEAP("allwinner,cma", ION_HEAP_TYPE_DMA, ION_HEAP_TYPE_DMA,
 		      "cma"),
 	PLATFORM_HEAP("allwinner,secure", ION_HEAP_TYPE_SECURE,
@@ -90,7 +92,7 @@ long sunxi_ion_ioctl(struct ion_client *client, unsigned int cmd,
 			ion_handle_get_by_id_nolock(client, data.handle.handle);
 		/* FIXME Hardcoded CMA struct pointer */
 		data.phys_addr =
-			((struct ion_cma_buffer_info *)(handle->buffer
+			((struct ion_carveout_buffer_info *)(handle->buffer
 								->priv_virt))
 				->handle;
 		data.size = handle->buffer->size;
@@ -127,7 +129,7 @@ static int sunxi_ion_probe(struct platform_device *pdev)
 
 	ipdev->data = ion_parse_dt(pdev, sunxi_heaps);
 	if (IS_ERR(ipdev->data)) {
-		pr_err("%s: ion_parse_dt error!\n", __func__);
+		pr_err("%s: ion_parse_dt error! errorid: %d\n", __func__, ipdev->data);
 		return PTR_ERR(ipdev->data);
 	}
 

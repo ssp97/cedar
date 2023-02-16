@@ -4,6 +4,7 @@ config VIDEO_SUNXI_CEDAR_ION
 	select GENERIC_ALLOCATOR
 	select DMA_SHARED_BUFFER
 	select CMA
+	select OF_RESERVED_MEM
 	select DMA_CMA
 	help
 	  Allwinner libcdc compatible Ion driver.

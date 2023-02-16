@@ -16,12 +16,11 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  */
-/* Notice: It's video engine driver API, Don't modify it in user space. */
+ /* Notice: It's video engine driver API, Don't modify it in user space. */
 #ifndef _CEDAR_VE_H_
 #define _CEDAR_VE_H_
 
-enum IOCTL_CMD
-{
+enum IOCTL_CMD {
 	IOCTL_UNKOWN = 0x100,
 	IOCTL_GET_ENV_INFO,
 	IOCTL_WAIT_VE_DE,
@@ -68,18 +67,17 @@ enum IOCTL_CMD
 	IOCTL_SET_DRAM_HIGH_CHANNAL = 0x600,
 };
 
-#define VE_LOCK_VDEC 0x01
-#define VE_LOCK_VENC 0x02
-#define VE_LOCK_JDEC 0x04
-#define VE_LOCK_00_REG 0x08
-#define VE_LOCK_04_REG 0x10
-#define VE_LOCK_ERR 0x80
+#define VE_LOCK_VDEC        0x01
+#define VE_LOCK_VENC        0x02
+#define VE_LOCK_JDEC        0x04
+#define VE_LOCK_00_REG      0x08
+#define VE_LOCK_04_REG      0x10
+#define VE_LOCK_ERR         0x80
 
-struct cedarv_env_infomation
-{
+struct cedarv_env_infomation {
 	unsigned int phymem_start;
-	int phymem_total_size;
-	unsigned long address_macc;
+	int  phymem_total_size;
+	unsigned long  address_macc;
 };
 
 #endif

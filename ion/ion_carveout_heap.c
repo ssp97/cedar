@@ -33,6 +33,11 @@ struct ion_carveout_heap {
 	ion_phys_addr_t base;
 };
 
+struct ion_carveout_buffer_info {
+	ion_phys_addr_t handle;
+	struct sg_table *table;
+};
+
 static ion_phys_addr_t ion_carveout_allocate(struct ion_heap *heap,
 					     unsigned long size,
 					     unsigned long align)
@@ -66,13 +71,20 @@ static int ion_carveout_heap_allocate(struct ion_heap *heap,
 	struct sg_table *table;
 	ion_phys_addr_t paddr;
 	int ret;
+	struct ion_carveout_buffer_info *info;
 
 	if (align > PAGE_SIZE)
 		return -EINVAL;
 
+	info = kzalloc(sizeof(struct ion_carveout_buffer_info), GFP_KERNEL);
+	if (!info)
+		return -ENOMEM;
+
 	table = kmalloc(sizeof(*table), GFP_KERNEL);
 	if (!table)
 		return -ENOMEM;
+	info->table = table;
+
 	ret = sg_alloc_table(table, 1, GFP_KERNEL);
 	if (ret)
 		goto err_free;
@@ -82,9 +94,12 @@ static int ion_carveout_heap_allocate(struct ion_heap *heap,
 		ret = -ENOMEM;
 		goto err_free_table;
 	}
+	info->handle = paddr;
 
 	sg_set_page(table->sgl, pfn_to_page(PFN_DOWN(paddr)), size, 0);
 	buffer->sg_table = table;
+	buffer->priv_virt = info;
+	buffer->size = size;
 
 	return 0;
 
@@ -92,6 +107,7 @@ err_free_table:
 	sg_free_table(table);
 err_free:
 	kfree(table);
+	kfree(info);
 	return ret;
 }
 
@@ -101,16 +117,18 @@ static void ion_carveout_heap_free(struct ion_buffer *buffer)
 	struct sg_table *table = buffer->sg_table;
 	struct page *page = sg_page(table->sgl);
 	ion_phys_addr_t paddr = PFN_PHYS(page_to_pfn(page));
+	struct ion_carveout_buffer_info *info = buffer->priv_virt;
 
 	ion_heap_buffer_zero(buffer);
 
-	if (ion_buffer_cached(buffer))
-		dma_sync_sg_for_device(NULL, table->sgl, table->nents,
-				       DMA_BIDIRECTIONAL);
+	// if (ion_buffer_cached(buffer))
+	// 	dma_sync_sg_for_device(NULL, table->sgl, table->nents,
+	// 			       DMA_BIDIRECTIONAL);
 
 	ion_carveout_free(heap, paddr, buffer->size);
 	sg_free_table(table);
 	kfree(table);
+	kfree(info);
 }
 
 static struct ion_heap_ops carveout_heap_ops = {
@@ -132,7 +150,7 @@ struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 	page = pfn_to_page(PFN_DOWN(heap_data->base));
 	size = heap_data->size;
 
-	ion_pages_sync_for_device(NULL, page, size, DMA_BIDIRECTIONAL);
+	//ion_pages_sync_for_device(NULL, page, size, DMA_BIDIRECTIONAL);
 
 	ret = ion_heap_pages_zero(page, size, pgprot_writecombine(PAGE_KERNEL));
 	if (ret)

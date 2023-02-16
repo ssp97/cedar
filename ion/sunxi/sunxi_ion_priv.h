@@ -27,4 +27,9 @@ struct ion_cma_buffer_info {
 	struct sg_table *table;
 };
 
+struct ion_carveout_buffer_info {
+	ion_phys_addr_t handle;
+	struct sg_table *table;
+};
+
 #endif

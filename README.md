@@ -1,16 +1,11 @@
-# Allwinner CedarX Driver for Mainline Linux 5.4
-### VideoEngine driver based on Allwinner H6 Homlet BSP
-### Ion driver based on Google Android Ion
+# Allwinner CedarX Driver for Mainline Linux 5.15
+VideoEngine driver based on A40i SDK  
+Ion driver based on Google Android Ion
 
-## Install
+## Install ve driver
 
-### Put all file in "drivers/staging/media/sunxi/cedar"
-
-### Add source to "drivers/staging/media/sunxi/Kconfig"
-```
-source "drivers/staging/media/sunxi/cedar/Kconfig"
-```
-Demo
+Put ve folder file in `drivers/staging/media/sunxi/cedar`  
+Add source include to `drivers/staging/media/sunxi/Kconfig`
 ```
 # SPDX-License-Identifier: GPL-2.0
 config VIDEO_SUNXI
@@ -25,157 +20,127 @@ config VIDEO_SUNXI
 
 if VIDEO_SUNXI
 
-source "drivers/staging/media/sunxi/cedrus/Kconfig"
-source "drivers/staging/media/sunxi/cedar/Kconfig"
+source "drivers/staging/media/sunxi/cedar_ve/Kconfig"
 
 endif
 ```
 
-### Add obj to "drivers/staging/media/sunxi/Makefile"
+Add obj to `drivers/staging/media/sunxi/Makefile`
 ```
-obj-y += cedar/
+obj-$(CONFIG_VIDEO_SUNXI_CEDAR_VE)    += cedar_ve/
 ```
-Demo
+## Install ion support
+
+Put ion folder file in `drivers/staging/android/`  
+Add source include to `drivers/staging/Kconfig`  
+```
+source "drivers/staging/android/Kconfig"
+```
+
+Add obj to `drivers/staging/Makefile`  
+```
+obj-$(CONFIG_ANDROID)		+= android/
+```
+
+Add source include to `drivers/staging/android/Kconfig` in the  `if ANDROID` condition.
 ```
 # SPDX-License-Identifier: GPL-2.0
-obj-$(CONFIG_VIDEO_SUNXI_CEDRUS)        += cedrus/
-obj-y += cedar/
+menu "Android"
+
+config ANDROID
+    bool "Android Drivers"
+    default y if ARCH_SUNXI
+    help
+      Enable support for various drivers needed on the Android platform
+
+if ANDROID
+
+config ASHMEM
+    bool "Enable the Anonymous Shared Memory Subsystem"
+    depends on SHMEM
+    help
+      The ashmem subsystem is a new shared memory allocator, similar to
+      POSIX SHM but with different behavior and sporting a simpler
+      file-based API.
+
+      It is, in theory, a good memory allocator for low-memory devices,
+      because it can discard shared memory units when under memory pressure.
+
+source "drivers/staging/android/ion/Kconfig"
+
+endif # if ANDROID
+
+endmenu
 ```
 
 ## DeviceTree
-### Demo for Allwinner V3 / V3s / S3L / S3
+Example for Allwinner H3
 ```
-syscon: syscon@1c00000 {
-    compatible = "allwinner,sun8i-v3s-system-controller", "allwinner,sun8i-h3-system-control", "syscon";
-    reg = <0x01c00000 0xd0>;
-    #address-cells = <1>;
-    #size-cells = <1>;
-    ranges;
-
-    sram_c: sram@1d00000 {
-        compatible = "mmio-sram";
-        reg = <0x01d00000 0x80000>;
+/ {
+    reserved-memory {
         #address-cells = <1>;
         #size-cells = <1>;
-        ranges = <0 0x01d00000 0x80000>;
+        ranges;
 
-        ve_sram: sram-section@0 {
-            compatible = "allwinner,sun8i-v3s-sram-c", "allwinner,sun4i-a10-sram-c1";
-            reg = <0x000000 0x80000>;
+        cma_pool: cma@4a000000 {
+            compatible = "shared-dma-pool";
+            size = <0x6000000>;
+            alloc-ranges = <0x4a000000 0x6000000>;
+            reusable;
+            linux,cma-default;
+        };
+
+        ion_carveout: vecarveout@50600000 {
+            compatible = "ion-region";
+            size = <0xFA00000>;
+            alloc-ranges = <0x50600000 0xFA00000>;
+            no-map;
         };
     };
-};
 
-cedarx: video-codec@1c0e000 {
-    compatible = "allwinner,sun8i-v3-cedar";
-    reg = <0x01c0e000 0x1000>;
-    clocks = <&ccu CLK_BUS_VE>, <&ccu CLK_VE>, <&ccu CLK_DRAM_VE>;
-    clock-names = "ahb", "mod", "ram";
-    resets = <&ccu RST_BUS_VE>;
-    interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
-    allwinner,sram = <&ve_sram 1>;
-    status = "disabled";
-};
-        
-ion: ion {
-    compatible = "allwinner,sunxi-ion";
-    status = "disabled";
-    heap_cma@0{
-        compatible = "allwinner,cma";
-        heap-name  = "cma";
-        heap-id    = <0x4>;
-        heap-base  = <0x0>;
-        heap-size  = <0x0>;
-        heap-type  = "ion_cma";
+    ve: ve@1c0e000 {
+        compatible = "allwinner,sunxi-cedar-ve";
+        reg = <0x01c0e000 0x1000>,
+            <0x01c00000 0x10>,
+            <0x01c20000 0x800>;
+        clocks = <&ccu CLK_PLL_VE>, <&ccu CLK_VE>,
+                <&ccu CLK_DRAM_VE>, <&ccu CLK_BUS_VE>;
+        clock-names = "pll", "mod", "ram", "ahb";
+        resets = <&ccu RST_BUS_VE>;
+        interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+        allwinner,sram = <&ve_sram 1>;
     };
-};
-```
-### Demo for Allwinner F1C100s / F1C200s
-
-In drivers/clk/sunxi-ng/ccu-suniv-f1c100s.c
-
-Change
-
-    static SUNXI_CCU_GATE(ve_clk, "ve", "pll-audio", 0x13c, BIT(31), 0);
-
-To
-
-    static SUNXI_CCU_GATE(ve_clk, "ve", "pll-ve", 0x13c, BIT(31), 0);
-
-```
-sram-controller@1c00000 {
-    compatible = "allwinner,suniv-f1c100s-system-control",
-             "allwinner,sun4i-a10-system-control";
-    reg = <0x01c00000 0x30>;
-    #address-cells = <1>;
-    #size-cells = <1>;
-    ranges;
-
-    sram_c: sram@1d00000 {
-        compatible = "mmio-sram";
-        reg = <0x01d00000 0x80000>;
-        #address-cells = <1>;
-        #size-cells = <1>;
-        ranges = <0 0x01d00000 0x80000>;
-
-        ve_sram: sram-section@0 {
-            compatible = "allwinner,suniv-f1c100s-sram-c", "allwinner,sun4i-a10-sram-c1";
-            reg = <0x000000 0x80000>;
+            
+    ion: ion {
+        compatible = "allwinner,sunxi-ion";
+        status = "disabled";
+        heap_carveout@0{
+            compatible = "allwinner,carveout";
+            heap-name  = "carveout";
+            heap-id    = <0x4>;
+            heap-base  = <0x50600000>;
+            heap-size  = <0xFA00000>;
+            heap-type  = "ion_carveout";
+            memory-region = <&ion_carveout>;
         };
     };
-};
-
-cedarx: video-codec@1c0e000 {
-    compatible = "allwinner,suniv-f1c100s-cedar";
-    reg = <0x01c0e000 0x1000>;
-    clocks = <&ccu CLK_BUS_VE>, <&ccu CLK_VE>, <&ccu CLK_DRAM_VE>;
-    clock-names = "ahb", "mod", "ram";
-    resets = <&ccu RST_BUS_VE>;
-    interrupts = <34>;
-    allwinner,sram = <&ve_sram 1>;
-    status = "disabled";
-};
-
-ion: ion {
-    compatible = "allwinner,sunxi-ion";
-    status = "disabled";
-    heap_cma@0{
-        compatible = "allwinner,cma";
-        heap-name  = "cma";
-        heap-id    = <0x4>;
-        heap-base  = <0x0>;
-        heap-size  = <0x0>;
-        heap-type  = "ion_cma";
-    };
-};
+}
 ```
+
 ## Compile
-### Enable Driver in 
+Enable Driver in
 ```
+> Device Drivers > Staging drivers > Android
+[*]  Android Drivers
+<*>    Allwinner CedarX Ion Driver
+
 > Device Drivers > Staging drivers > Media staging drivers
-[*]   Allwinner sunXi family Video Devices
-<*>     Allwinner CedarX Video Engine Driver
-<*>     Allwinner CedarX Ion Driver 
+[*]  Allwinner sunXi family Video Devices
+[M]  Allwinner CedarX VideoEngine Driver
 ```
-### Config "DMA Contiguous Memory Allocator"
-```
-> Library routines
--*- DMA Contiguous Memory Allocator
-*** Default contiguous memory area size: ***
-(32)  Size in Mega Bytes
-Selected region size (Use mega bytes value only)  --->
-```
+
 ... and here we go.
 
-## Debug
-### ION_IOC_ALLOC error / memory alloc fail
-Increase
-```
-CMA_AREAS
-CMA_SIZE_MBYTES
-```
-### Default
-Report in issue.
 
 ## Userspace library
 https://github.com/aodzip/libcedarc
