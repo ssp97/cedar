@@ -131,6 +131,12 @@ Example for Allwinner H3 (The "7" in the example represents CLK_PLL_VE because C
     };
 }
 ```
+Enable ion
+```
+&ion {
+	status = "okay";
+};
+```
 
 ## Compile
 Enable Driver in
