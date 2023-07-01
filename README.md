@@ -1,4 +1,4 @@
-# Allwinner CedarX Driver for Mainline Linux 5.15
+# Allwinner CedarX Driver for Mainline Linux 6.2.0
 VideoEngine driver based on A40i SDK  
 Ion driver based on Google Android Ion
 

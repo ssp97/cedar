@@ -313,7 +313,7 @@ void ion_heap_init_shrinker(struct ion_heap *heap)
 	heap->shrinker.scan_objects = ion_heap_shrink_scan;
 	heap->shrinker.seeks = DEFAULT_SEEKS;
 	heap->shrinker.batch = 0;
-	register_shrinker(&heap->shrinker);
+	register_shrinker_prepared(&heap->shrinker);
 }
 
 struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
