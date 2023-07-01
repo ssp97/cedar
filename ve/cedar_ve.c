@@ -64,7 +64,7 @@
 #include <linux/dma-buf.h>
 //#include <linux/sunxi_mbus.h>
 
-
+MODULE_IMPORT_NS(DMA_BUF);
 struct regulator *regu;
 
 #define DRV_VERSION "0.01alpha"
