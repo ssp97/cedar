@@ -79,7 +79,11 @@ endmenu
 ```
 
 ## DeviceTree
-Example for Allwinner H3 (The "7" in the example represents CLK_PLL_VE because CLK_PLL_VE is not defined in sun8i-h3-ccu.h.)
+Example for Allwinner H3  
+
+(NOTE: The "7" in the example represents CLK_PLL_VE because CLK_PLL_VE is not exported in sun8i-h3-ccu.h.)  
+(For different soc here CLK_PLL_VE number can be different. **You must check it again by your self OR LINUX KERNEL MAY CRASH**.)  
+(Example, for Allwinner A40i, it's "9" in ccu-sun8i-r40.h, not "7".)  
 ```
 / {
     reserved-memory {
