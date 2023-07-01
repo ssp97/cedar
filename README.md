@@ -4,7 +4,7 @@ Ion driver based on Google Android Ion
 
 ## Install ve driver
 
-Put ve folder file in `drivers/staging/media/sunxi/cedar`  
+Put ve folder file in `drivers/staging/media/sunxi/cedar_ve`  
 Add source include to `drivers/staging/media/sunxi/Kconfig`
 ```
 # SPDX-License-Identifier: GPL-2.0
@@ -42,6 +42,11 @@ Add obj to `drivers/staging/Makefile`
 obj-$(CONFIG_ANDROID)		+= android/
 ```
 
+Add obj to `drivers/staging/android/Makefile`
+```
+obj-$(CONFIG_VIDEO_SUNXI_CEDAR_ION) += ion/
+```
+
 Add source include to `drivers/staging/android/Kconfig` in the  `if ANDROID` condition.
 ```
 # SPDX-License-Identifier: GPL-2.0
@@ -74,7 +79,7 @@ endmenu
 ```
 
 ## DeviceTree
-Example for Allwinner H3
+Example for Allwinner H3 (The "7" in the example represents CLK_PLL_VE because CLK_PLL_VE is not defined in sun8i-h3-ccu.h.)
 ```
 / {
     reserved-memory {
@@ -103,7 +108,7 @@ Example for Allwinner H3
         reg = <0x01c0e000 0x1000>,
             <0x01c00000 0x10>,
             <0x01c20000 0x800>;
-        clocks = <&ccu CLK_PLL_VE>, <&ccu CLK_VE>,
+        clocks = <&ccu 7>, <&ccu CLK_VE>, 
                 <&ccu CLK_DRAM_VE>, <&ccu CLK_BUS_VE>;
         clock-names = "pll", "mod", "ram", "ahb";
         resets = <&ccu RST_BUS_VE>;
@@ -125,6 +130,12 @@ Example for Allwinner H3
         };
     };
 }
+```
+Enable ion
+```
+&ion {
+	status = "okay";
+};
 ```
 
 ## Compile
