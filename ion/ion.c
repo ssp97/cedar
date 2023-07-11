@@ -993,53 +993,22 @@ static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
 {
 }
 
-static void *ion_dma_buf_do_vmap(struct ion_buffer *buffer)
-{
-	void *vaddr;
-	int npages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
-	pgprot_t pgprot;
-
-	if(buffer->pages == NULL)
-	{
-		pr_err("ion_dma_buf_do_vmap, pages = %p, npages = %d", buffer->pages, npages);
-		return ERR_PTR(-EFAULT);
-	}
-
-	if (buffer->flags & ION_FLAG_CACHED)
-		pgprot = PAGE_KERNEL;
-	else
-		pgprot = pgprot_writecombine(PAGE_KERNEL);
-
-	vaddr = vmap(buffer->pages, npages, VM_MAP, pgprot);
-	if (!vaddr)
-		return ERR_PTR(-ENOMEM);
-
-	return vaddr;
-}
-
 static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
 	void *vaddr;
 	int ret = 0;
 
-	mutex_lock(&buffer->lock);
-	if (buffer->vmap_cnt) {
-		buffer->vmap_cnt++;
-		dma_buf_map_set_vaddr(map, buffer->vaddr);
-		goto out;
+	if (buffer->heap->ops->map_kernel) {
+		mutex_lock(&buffer->lock);
+		vaddr = ion_buffer_kmap_get(buffer);
+		dma_buf_map_set_vaddr(map, vaddr);
+		mutex_unlock(&buffer->lock);
+	} else {
+		pr_warn_ratelimited("heap %s doesn't support map_kernel\n",
+				    buffer->heap->name);
+		ret = ERR_PTR(-EINVAL);
 	}
-
-	vaddr = ion_dma_buf_do_vmap(buffer);
-	if (IS_ERR(vaddr)) {
-		ret = PTR_ERR(vaddr);
-		goto out;
-	}
-	buffer->vaddr = vaddr;
-	buffer->vmap_cnt++;
-	dma_buf_map_set_vaddr(map, buffer->vaddr);
-out:
-	mutex_unlock(&buffer->lock);
 
 	return ret;
 }
@@ -1047,14 +1016,14 @@ out:
 static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
-
-	mutex_lock(&buffer->lock);
-	if (!--buffer->vmap_cnt) {
-		vunmap(buffer->vaddr);
-		buffer->vaddr = NULL;
+	
+	if (buffer->heap->ops->map_kernel) {
+		mutex_lock(&buffer->lock);
+		ion_buffer_kmap_put(buffer);
+		mutex_unlock(&buffer->lock);
+		dma_buf_map_clear(map);
 	}
-	mutex_unlock(&buffer->lock);
-	dma_buf_map_clear(map);
+	
 }
 
 
