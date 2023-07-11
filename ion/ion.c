@@ -38,6 +38,7 @@
 #include <linux/dma-buf.h>
 #include <linux/idr.h>
 #include <linux/sched/task.h>
+#include <linux/highmem.h>
 
 #include "ion.h"
 #include "ion_priv.h"
@@ -970,6 +971,12 @@ static int ion_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 static void ion_dma_buf_release(struct dma_buf *dmabuf)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
+	if(buffer->vmap_cnt > 0)
+	{
+		WARN(1, "%s: buffer still mapped in the kernel\n", __func__);
+		vunmap(buffer->vaddr);
+		buffer->vaddr = NULL;
+	}
 
 	ion_buffer_put(buffer);
 }
@@ -986,6 +993,59 @@ static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
 {
 }
 
+static void *ion_dma_buf_do_vmap(struct ion_buffer *buffer)
+{
+	void *vaddr;
+	int npages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
+
+	vaddr = vmap(buffer->pages, npages, VM_MAP, PAGE_KERNEL);
+	if (!vaddr)
+		return ERR_PTR(-ENOMEM);
+
+	return vaddr;
+}
+
+static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+	void *vaddr;
+	int ret = 0;
+
+	mutex_lock(&buffer->lock);
+	if (buffer->vmap_cnt) {
+		buffer->vmap_cnt++;
+		dma_buf_map_set_vaddr(map, buffer->vaddr);
+		goto out;
+	}
+
+	vaddr = ion_dma_buf_do_vmap(buffer);
+	if (IS_ERR(vaddr)) {
+		ret = PTR_ERR(vaddr);
+		goto out;
+	}
+	buffer->vaddr = vaddr;
+	buffer->vmap_cnt++;
+	dma_buf_map_set_vaddr(map, buffer->vaddr);
+out:
+	mutex_unlock(&buffer->lock);
+
+	return ret;
+}
+
+static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
+{
+	struct ion_buffer *buffer = dmabuf->priv;
+
+	mutex_lock(&buffer->lock);
+	if (!--buffer->vmap_cnt) {
+		vunmap(buffer->vaddr);
+		buffer->vaddr = NULL;
+	}
+	mutex_unlock(&buffer->lock);
+	dma_buf_map_clear(map);
+}
+
+
 static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 					enum dma_data_direction direction)
 {
@@ -999,6 +1059,12 @@ static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 	}
 
 	mutex_lock(&buffer->lock);
+
+	if(buffer->vmap_cnt)
+	{
+		invalidate_kernel_vmap_range(buffer->vaddr, buffer->size);
+	}
+
 	vaddr = ion_buffer_kmap_get(buffer);
 	mutex_unlock(&buffer->lock);
 	return PTR_ERR_OR_ZERO(vaddr);
@@ -1025,6 +1091,8 @@ static struct dma_buf_ops dma_buf_ops = {
 	.end_cpu_access = ion_dma_buf_end_cpu_access,
 	// .map = ion_dma_buf_kmap,
 	// .unmap = ion_dma_buf_kunmap,
+	.vmap = ion_dma_buf_vmap,
+	.vunmap = ion_dma_buf_vunmap,
 };
 
 static struct dma_buf *__ion_share_dma_buf(struct ion_client *client,
