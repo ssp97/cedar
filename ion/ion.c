@@ -997,8 +997,20 @@ static void *ion_dma_buf_do_vmap(struct ion_buffer *buffer)
 {
 	void *vaddr;
 	int npages = PAGE_ALIGN(buffer->size) / PAGE_SIZE;
+	pgprot_t pgprot;
 
-	vaddr = vmap(buffer->pages, npages, VM_MAP, PAGE_KERNEL);
+	if(buffer->pages == NULL)
+	{
+		pr_err("ion_dma_buf_do_vmap, pages = %p, npages = %d", buffer->pages, npages);
+		return ERR_PTR(-EFAULT);
+	}
+
+	if (buffer->flags & ION_FLAG_CACHED)
+		pgprot = PAGE_KERNEL;
+	else
+		pgprot = pgprot_writecombine(PAGE_KERNEL);
+
+	vaddr = vmap(buffer->pages, npages, VM_MAP, pgprot);
 	if (!vaddr)
 		return ERR_PTR(-ENOMEM);
 
