@@ -971,12 +971,6 @@ static int ion_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 static void ion_dma_buf_release(struct dma_buf *dmabuf)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
-	if(buffer->vmap_cnt > 0)
-	{
-		WARN(1, "%s: buffer still mapped in the kernel\n", __func__);
-		vunmap(buffer->vaddr);
-		buffer->vaddr = NULL;
-	}
 
 	ion_buffer_put(buffer);
 }
@@ -1040,11 +1034,6 @@ static int ion_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 	}
 
 	mutex_lock(&buffer->lock);
-
-	if(buffer->vmap_cnt)
-	{
-		invalidate_kernel_vmap_range(buffer->vaddr, buffer->size);
-	}
 
 	vaddr = ion_buffer_kmap_get(buffer);
 	mutex_unlock(&buffer->lock);

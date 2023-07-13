@@ -69,7 +69,6 @@ struct ion_buffer {
 	void *priv_virt;
 	struct mutex lock;
 	int kmap_cnt;
-	int vmap_cnt;
 	void *vaddr;
 	int dmap_cnt;
 	struct sg_table *sg_table;
