@@ -987,7 +987,7 @@ static void ion_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long offset,
 {
 }
 
-static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
+static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct iosys_map *map)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
 	void *vaddr;
@@ -996,7 +996,7 @@ static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
 	if (buffer->heap->ops->map_kernel) {
 		mutex_lock(&buffer->lock);
 		vaddr = ion_buffer_kmap_get(buffer);
-		dma_buf_map_set_vaddr(map, vaddr);
+		iosys_map_set_vaddr(map, vaddr);
 		mutex_unlock(&buffer->lock);
 	} else {
 		pr_warn_ratelimited("heap %s doesn't support map_kernel\n",
@@ -1007,7 +1007,7 @@ static int ion_dma_buf_vmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
 	return ret;
 }
 
-static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
+static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, struct iosys_map *map)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
 	
@@ -1015,7 +1015,7 @@ static void ion_dma_buf_vunmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
 		mutex_lock(&buffer->lock);
 		ion_buffer_kmap_put(buffer);
 		mutex_unlock(&buffer->lock);
-		dma_buf_map_clear(map);
+		iosys_map_clear(map);
 	}
 	
 }
